@@ -1,4 +1,3 @@
-
 /**
  * Author......: Netherlands Forensic Institute
  * License.....: MIT
@@ -12,7 +11,10 @@
 #define ARGON2_VERSION_10 0x10
 #define ARGON2_VERSION_13 0x13
 
+#ifndef THREADS_PER_LANE
 #define THREADS_PER_LANE 32
+#endif
+
 #define FULL_MASK 0xffffffff
 
 #define BLAKE2B_OUTBYTES 64
@@ -76,25 +78,44 @@ DECLSPEC u64 hc__shfl (MAYBE_UNUSED LOCAL_AS u64 *shuffle_buf, const u64 var, co
 
   const u64 out = shuffle_buf[src_lane & (argon2_lsz - 1)];
 
+  barrier (CLK_LOCAL_MEM_FENCE);
+
   return out;
 }
 #endif
 
 #elif defined IS_METAL
-#define hc__shfl_sync(shfbuf,mask,var,srcLane,argon2_thread,argon2_lsz) hc__shfl ((shfbuf),(var),(srcLane),(argon2_thread),(argon2_lsz))
+#define hc__shfl_sync(shfbuf,mask,var,srcLane,argon2_thread,argon2_lsz) simd_shuffle_64 ((var),(srcLane),(argon2_lsz))
 
-DECLSPEC u64 hc__shfl (LOCAL_AS u64 *shuffle_buf, const u64 var, const int src_lane, const u32 argon2_thread, const u32 argon2_lsz)
+DECLSPEC u64 simd_shuffle_64 (const u64 var, const int src_lane, const u32 argon2_lsz)
 {
-  shuffle_buf[argon2_thread] = var;
+  const u32 idx = src_lane & (argon2_lsz - 1);
 
-  SYNC_THREADS();
+  const u32 l32 = l32_from_64_S (var);
+  const u32 h32 = h32_from_64_S (var);
 
-  const u64 out = shuffle_buf[src_lane & (argon2_lsz - 1)];
+  u32 l32r = simd_shuffle (l32, idx);
+  u32 h32r = simd_shuffle (h32, idx);
+
+  const u64 out = hl32_to_64_S (h32r, l32r);
 
   return out;
 }
 #endif
 
+#ifdef IS_CPU
+#define ARGON2_G(a,b,c,d)                \
+{                                        \
+  a = a + b + 2 * trunc_mul(a, b);       \
+  d = hc_rotr64_S (d ^ a, 32);           \
+  c = c + d + 2 * trunc_mul(c, d);       \
+  b = hc_rotr64_S (b ^ c, 24);           \
+  a = a + b + 2 * trunc_mul(a, b);       \
+  d = hc_rotr64_S (d ^ a, 16);           \
+  c = c + d + 2 * trunc_mul(c, d);       \
+  b = hc_rotr64_S (b ^ c, 63);           \
+}
+#else
 #define ARGON2_G(a,b,c,d)                \
 {                                        \
   a = a + b + 2 * trunc_mul(a, b);       \
@@ -106,6 +127,7 @@ DECLSPEC u64 hc__shfl (LOCAL_AS u64 *shuffle_buf, const u64 var, const int src_l
   c = c + d + 2 * trunc_mul(c, d);       \
   b = hc_rotr64_S (b ^ c, 63);           \
 }
+#endif
 
 #define ARGON2_P()                       \
 {                                        \
@@ -153,5 +175,6 @@ typedef struct argon2_pos
 DECLSPEC void argon2_init (GLOBAL_AS const pw_t *pw, GLOBAL_AS const salt_t *salt, PRIVATE_AS const argon2_options_t *options, GLOBAL_AS argon2_block_t *out);
 DECLSPEC void argon2_fill_segment (GLOBAL_AS argon2_block_t *blocks, PRIVATE_AS const argon2_options_t *options, PRIVATE_AS const argon2_pos_t *pos, LOCAL_AS u64 *shuffle_buf, const u32 argon2_thread, const u32 argon2_lsz);
 DECLSPEC void argon2_final (GLOBAL_AS argon2_block_t *blocks, PRIVATE_AS const argon2_options_t *options, PRIVATE_AS u32 *out);
+DECLSPEC GLOBAL_AS argon2_block_t *get_argon2_block (PRIVATE_AS const argon2_options_t *options, GLOBAL_AS void *buf, const int idx);
 
 #endif // INC_HASH_ARGON2_H

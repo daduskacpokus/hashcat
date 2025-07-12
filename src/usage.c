@@ -100,7 +100,7 @@ static const char *const USAGE_BIG_PRE_HASHMODES[] =
   "     --bridge-parameter4        | Str  | Sets the generic parameter 4 for a Bridge            |",
   "     --cpu-affinity             | Str  | Locks to CPU devices, separated with commas          | --cpu-affinity=1,2,3",
   "     --hook-threads             | Num  | Sets number of threads for a hook (per compute unit) | --hook-threads=8",
-  "     --hash-info                |      | Show information for each hash-mode                  |",
+  " -H, --hash-info                |      | Show information for each hash-mode                  | -H or -HH",
   "     --example-hashes           |      | Alias of --hash-info                                 |",
   "     --backend-ignore-cuda      |      | Do not try to open CUDA interface on startup         |",
   "     --backend-ignore-hip       |      | Do not try to open HIP interface on startup          |",
@@ -139,6 +139,10 @@ static const char *const USAGE_BIG_PRE_HASHMODES[] =
   " -2, --custom-charset2          | CS   | User-defined charset ?2                              | -2 ?l?d?s",
   " -3, --custom-charset3          | CS   | User-defined charset ?3                              |",
   " -4, --custom-charset4          | CS   | User-defined charset ?4                              |",
+  " -5, --custom-charset5          | CS   | User-defined charset ?5                              |",
+  " -6, --custom-charset6          | CS   | User-defined charset ?6                              |",
+  " -7, --custom-charset7          | CS   | User-defined charset ?7                              |",
+  " -8, --custom-charset8          | CS   | User-defined charset ?8                              |",
   "     --identify                 |      | Shows all supported algorithms for input hashes      | --identify my.hash",
   " -i, --increment                |      | Enable mask increment mode                           |",
   "     --increment-min            | Num  | Start mask incrementing at X                         | --increment-min=4",
@@ -155,6 +159,7 @@ static const char *const USAGE_BIG_PRE_HASHMODES[] =
   "     --brain-session            | Hex  | Overrides automatically calculated brain session     | --brain-session=0x2ae611db",
   "     --brain-session-whitelist  | Hex  | Allow given sessions only, separated with commas     | --brain-session-whitelist=0x2ae611db",
   #endif
+  "     --color-cracked            |      | Enables color output for cracked hashes              |",
   "",
   NULL
 };

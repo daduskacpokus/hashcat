@@ -15,43 +15,6 @@
 #define ARGON2_SYNC_POINTS  4
 #define ARGON2_BLOCK_SIZE   1024
 
-typedef struct argon2_tmp
-{
-  u32 state[4]; // just something for now
-
-} argon2_tmp_t;
-
-typedef struct argon2_options
-{
-  u32 type;
-  u32 version;
-
-  u32 iterations;
-  u32 parallelism;
-  u32 memory_usage_in_kib;
-
-  u32 segment_length;
-  u32 lane_length;
-  u32 memory_block_count;
-
-  u32 digest_len;
-
-} argon2_options_t;
-
-u32 argon2_module_kernel_threads_min (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra)
-{
-  const u32 kernel_threads_min = 32; // hard-coded in kernel
-
-  return kernel_threads_min;
-}
-
-u32 argon2_module_kernel_threads_max (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra)
-{
-  const u32 kernel_threads_max = 32; // hard-coded in kernel
-
-  return kernel_threads_max;
-}
-
 u64 argon2_module_tmp_size (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra)
 {
   const u64 tmp_size = 0; // we'll add some later
@@ -59,14 +22,28 @@ u64 argon2_module_tmp_size (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_U
   return tmp_size;
 }
 
+u64 get_largest_memory_block_count (const hashes_t *hashes)
+{
+  argon2_options_t *options    = (argon2_options_t *) hashes->esalts_buf;
+  argon2_options_t *options_st = (argon2_options_t *) hashes->st_esalts_buf;
+
+  u64 largest_memory_block_count = (options_st == NULL) ? options->memory_block_count : options_st->memory_block_count;
+
+  for (u32 i = 0; i < hashes->salts_cnt; i++)
+  {
+    largest_memory_block_count = MAX (largest_memory_block_count, options->memory_block_count);
+
+    options++;
+  }
+
+  return largest_memory_block_count;
+}
+
 const char *argon2_module_extra_tuningdb_block (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra, const backend_ctx_t *backend_ctx, MAYBE_UNUSED const hashes_t *hashes, const u32 device_id, const u32 kernel_accel_user)
 {
   hc_device_param_t *device_param = &backend_ctx->devices_param[device_id];
 
-  argon2_options_t *options    = (argon2_options_t *) hashes->esalts_buf;
-  argon2_options_t *options_st = (argon2_options_t *) hashes->st_esalts_buf;
-
-  const u32 memory_block_count = (options->memory_block_count) ? options->memory_block_count : options_st->memory_block_count;
+  const u32 memory_block_count = get_largest_memory_block_count (hashes);
 
   const u64 size_per_accel = ARGON2_BLOCK_SIZE * memory_block_count;
 
@@ -116,10 +93,7 @@ const char *argon2_module_extra_tuningdb_block (MAYBE_UNUSED const hashconfig_t 
 
 u64 argon2_module_extra_buffer_size (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra, MAYBE_UNUSED const hashes_t *hashes, MAYBE_UNUSED const hc_device_param_t *device_param)
 {
-  argon2_options_t *options    = (argon2_options_t *) hashes->esalts_buf;
-  argon2_options_t *options_st = (argon2_options_t *) hashes->st_esalts_buf;
-
-  const u32 memory_block_count = (options->memory_block_count) ? options->memory_block_count : options_st->memory_block_count;
+  const u32 memory_block_count = get_largest_memory_block_count (hashes);
 
   const u64 size_per_accel = ARGON2_BLOCK_SIZE * memory_block_count;
 
@@ -130,6 +104,7 @@ u64 argon2_module_extra_buffer_size (MAYBE_UNUSED const hashconfig_t *hashconfig
 
 u64 argon2_module_extra_tmp_size (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra, MAYBE_UNUSED const hashes_t *hashes)
 {
+  /*
   argon2_options_t *options    = (argon2_options_t *) hashes->esalts_buf;
   argon2_options_t *options_st = (argon2_options_t *) hashes->st_esalts_buf;
 
@@ -155,6 +130,7 @@ u64 argon2_module_extra_tmp_size (MAYBE_UNUSED const hashconfig_t *hashconfig, M
       return (1ULL << 62);
     }
   }
+  */
 
   u64 tmp_size = sizeof (argon2_tmp_t);
 
@@ -163,11 +139,16 @@ u64 argon2_module_extra_tmp_size (MAYBE_UNUSED const hashconfig_t *hashconfig, M
 
 char *argon2_module_jit_build_options (MAYBE_UNUSED const hashconfig_t *hashconfig, MAYBE_UNUSED const user_options_t *user_options, MAYBE_UNUSED const user_options_extra_t *user_options_extra, MAYBE_UNUSED const hashes_t *hashes, MAYBE_UNUSED const hc_device_param_t *device_param)
 {
-  argon2_options_t *options = (argon2_options_t *) hashes->esalts_buf;
+  //argon2_options_t *options = (argon2_options_t *) hashes->esalts_buf;
 
   char *jit_build_options = NULL;
 
-  hc_asprintf (&jit_build_options, "-D ARGON2_PARALLELISM=%u -D ARGON2_TMP_ELEM=%u", options[0].parallelism, options[0].memory_block_count);
+  //hc_asprintf (&jit_build_options, "-D ARGON2_PARALLELISM=%u", options[0].parallelism);
+
+  if (device_param->opencl_device_type & CL_DEVICE_TYPE_CPU)
+  {
+    hc_asprintf (&jit_build_options, "-D THREADS_PER_LANE=1");
+  }
 
   return jit_build_options;
 }

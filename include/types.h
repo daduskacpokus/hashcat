@@ -696,6 +696,7 @@ typedef enum user_options_defaults
   BRAIN_SERVER             = false,
   BRAIN_SESSION            = 0,
   #endif
+  COLOR_CRACKED            = false,
   DEBUG_MODE               = 0,
   DEPRECATED_CHECK         = true,
   DYNAMIC_X                = false,
@@ -706,7 +707,7 @@ typedef enum user_options_defaults
   #else
   HWMON_TEMP_ABORT         = 90,
   #endif
-  HASH_INFO                = false,
+  HASH_INFO                = 0,
   HASH_MODE                = 0,
   HCCAPX_MESSAGE_PAIR      = 0,
   HEX_CHARSET              = false,
@@ -815,6 +816,7 @@ typedef enum user_options_map
   IDX_BRAIN_SESSION             = 0xff0f,
   IDX_BRAIN_SESSION_WHITELIST   = 0xff10,
   #endif
+  IDX_COLOR_CRACKED             = 0xff59,
   IDX_BRIDGE_PARAMETER1         = 0xff80,
   IDX_BRIDGE_PARAMETER2         = 0xff81,
   IDX_BRIDGE_PARAMETER3         = 0xff82,
@@ -824,13 +826,17 @@ typedef enum user_options_map
   IDX_CUSTOM_CHARSET_2          = '2',
   IDX_CUSTOM_CHARSET_3          = '3',
   IDX_CUSTOM_CHARSET_4          = '4',
+  IDX_CUSTOM_CHARSET_5          = '5',
+  IDX_CUSTOM_CHARSET_6          = '6',
+  IDX_CUSTOM_CHARSET_7          = '7',
+  IDX_CUSTOM_CHARSET_8          = '8',
   IDX_DEBUG_FILE                = 0xff12,
   IDX_DEBUG_MODE                = 0xff13,
   IDX_DEPRECATED_CHECK_DISABLE  = 0xff14,
   IDX_DYNAMIC_X                 = 0xff55,
   IDX_ENCODING_FROM             = 0xff15,
   IDX_ENCODING_TO               = 0xff16,
-  IDX_HASH_INFO                 = 0xff17,
+  IDX_HASH_INFO                 = 'H', // 0xff17
   IDX_FORCE                     = 0xff18,
   IDX_HWMON_DISABLE             = 0xff19,
   IDX_HWMON_TEMP_ABORT          = 0xff1a,
@@ -2210,6 +2216,8 @@ typedef struct outfile_ctx
 
   char   *filename;
 
+  hc_thread_mutex_t mux_outfile;
+
 } outfile_ctx_t;
 
 typedef struct pot
@@ -2430,11 +2438,11 @@ typedef struct user_options
   bool         brain_client;
   bool         brain_server;
   #endif
+  bool         color_cracked;
   bool         force;
   bool         deprecated_check;
   bool         dynamic_x;
   bool         hwmon;
-  bool         hash_info;
   bool         hex_charset;
   bool         hex_salt;
   bool         hex_wordlist;
@@ -2486,7 +2494,6 @@ typedef struct user_options
   char        *bridge_parameter3;
   char        *bridge_parameter4;
   char        *cpu_affinity;
-  char        *custom_charset_4;
   char        *debug_file;
   char        *induction_dir;
   char        *keyboard_layout_mapping;
@@ -2505,6 +2512,11 @@ typedef struct user_options
   const char  *custom_charset_1;
   const char  *custom_charset_2;
   const char  *custom_charset_3;
+  const char  *custom_charset_4;
+  const char  *custom_charset_5;
+  const char  *custom_charset_6;
+  const char  *custom_charset_7;
+  const char  *custom_charset_8;
   const char  *encoding_from;
   const char  *encoding_to;
   const char  *rule_buf_l;
@@ -2528,6 +2540,7 @@ typedef struct user_options
   #endif
   u32          debug_mode;
   u32          hwmon_temp_abort;
+  u32          hash_info;
   int          hash_mode;
   u32          hccapx_message_pair;
   u32          hook_threads;

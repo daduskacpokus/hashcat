@@ -334,6 +334,14 @@ static int autotune (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
     // v7 autotuner is a lot more straight forward
     // we start with some purely theoretical values as a base, then move on to some meassured tests
 
+    /* This causes more problems than it solves.
+     * In theory, it's fine to boost accel early to improve accuracy, and it does,
+     * but on the other hand, it prevents increasing the thread count due to high runtime.
+     * For longer runtimes, we want to prioritize more threads over higher accel.
+     * This change also has some downsides for algorithms that actually benefit
+     * from higher accel and fewer threads (e.g., 7800, 14900). But those are easy to manage
+     * by limiting thread count, or better, by setting them to OPTS_TYPE_NATIVE_THREADS.
+
     if (hashconfig->attack_exec == ATTACK_EXEC_INSIDE_KERNEL)
     {
       if (kernel_accel_min < kernel_accel_max)
@@ -348,6 +356,7 @@ static int autotune (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
         }
       }
     }
+    */
 
     if (kernel_threads_min < kernel_threads_max)
     {
@@ -400,6 +409,40 @@ static int autotune (hashcat_ctx_t *hashcat_ctx, hc_device_param_t *device_param
       if ((kernel_loops_start >= kernel_loops_min) && (kernel_loops_start <= kernel_loops_max))
       {
         kernel_loops = kernel_loops_start;
+      }
+    }
+
+    if (1)
+    {
+      // some algorithm start ways to high with these theoretical preset (for instance, 8700)
+      // so much that they can't be tuned anymore
+
+      while ((kernel_accel > kernel_accel_min) || (kernel_threads > kernel_threads_min) || (kernel_loops > kernel_loops_min))
+      {
+        double exec_msec = try_run_times (hashcat_ctx, device_param, kernel_accel, kernel_loops, kernel_threads, 2);
+
+        if (exec_msec < target_msec / 16) break;
+
+        if (kernel_accel > kernel_accel_min)
+        {
+          kernel_accel = MAX (kernel_accel / 2, kernel_accel_min);
+
+          continue;
+        }
+
+        if (kernel_threads > kernel_threads_min)
+        {
+          kernel_threads = MAX (kernel_threads / 2, kernel_threads_min);
+
+          continue;
+        }
+
+        if (kernel_loops > kernel_loops_min)
+        {
+          kernel_loops = MAX (kernel_loops / 2, kernel_loops_min);
+
+          continue;
+        }
       }
     }
 
@@ -679,7 +722,7 @@ HC_API_CALL void *thread_autotune (void *p)
 
   if (device_param->is_hip == true)
   {
-    if (hc_hipCtxPushCurrent (hashcat_ctx, device_param->hip_context) == -1) return NULL;
+    if (hc_hipSetDevice (hashcat_ctx, device_param->hip_device) == -1) return NULL;
   }
 
   // check for autotune failure
@@ -693,11 +736,6 @@ HC_API_CALL void *thread_autotune (void *p)
   if (device_param->is_cuda == true)
   {
     if (hc_cuCtxPopCurrent (hashcat_ctx, &device_param->cuda_context) == -1) return NULL;
-  }
-
-  if (device_param->is_hip == true)
-  {
-    if (hc_hipCtxPopCurrent (hashcat_ctx, &device_param->hip_context) == -1) return NULL;
   }
 
   return NULL;

@@ -795,7 +795,7 @@ static int outer_loop (hashcat_ctx_t *hashcat_ctx)
   {
     if ((mask_ctx->masks_cnt > 1) || (straight_ctx->dicts_cnt > 1))
     {
-      event_log_error (hashcat_ctx, "Use of --skip/--limit is not supported with --increment, mask files, or --stdout.");
+      event_log_error (hashcat_ctx, "Use of --skip/--limit is not supported with --increment, mask files, multiple dictionaries, or --stdout.");
 
       return -1;
     }
@@ -1481,6 +1481,8 @@ bool autodetect_hashmode_test (hashcat_ctx_t *hashcat_ctx)
   if (hashlist_mode == HL_MODE_ARG)
   {
     char *input_buf = user_options_extra->hc_hash;
+
+    if (!input_buf) return false;
 
     size_t input_len = strlen (input_buf);
 
