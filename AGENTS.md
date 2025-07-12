@@ -9,7 +9,7 @@
 | Field                 | Value                                                        |
 | --------------------- | ------------------------------------------------------------ |
 | **agent\_id**         | `hashcat-codex`                                              |
-| **model**             | `gpt-4o` (OpenAI reasoning series)                           |
+| **model**             | `feat/hashcat` (OpenAI reasoning series)                     |
 | **author**            | @daduskacpokus (repo maintainer)                             |
 | **primary\_language** | English (technical) / Русский (communication)                |
 | **created**           | 2025‑07‑06                                                   |
